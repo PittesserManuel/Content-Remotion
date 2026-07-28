@@ -152,3 +152,33 @@ Vor jeder Option eine kurze Karte `OPTION 1/4` … `OPTION 4/4`, je ~0,8 s,
 auf den Schnitten 12,08 / 24,74 / 40,16 / 55,24. Kostet fast nichts, gibt
 dem Video eine Struktur zum Dranbleiben und liefert vier saubere
 Einstiegspunkte. Als eine Szene mit Parameter gebaut, nicht als vier.
+
+---
+
+## Plattformsicheres Feld (gilt für alle weiteren Szenen)
+
+Zielplattformen: **TikTok und Instagram Reels**. Untertitel setzt der Nutzer
+selbst, immer etwa mittig.
+
+Daraus ergibt sich ein nutzbares Feld — Werte in Bildpixeln (1080×1920),
+in Klammern die CSS-Pixel der Szene (Bild = 1,5×):
+
+| Grenze | Pixel | CSS | Grund |
+|---|---|---|---|
+| oben frei ab | 0 | 0 | — |
+| Untertitelband | 800–1180 | 533–787 | gemessener Umschlag, mittig |
+| Grafik beginnt ab | 1190 | 795 | direkt unter den Untertiteln |
+| Grafik endet bei | 1560 | 1040 | darunter Caption-Bereich der Plattform |
+| rechte Grenze | 920 | 613 | rechts die Button-Spalte (Like/Kommentar/Teilen) |
+
+**Nutzbar bleibt also ein Feld von 860×370 Bildpixeln (573×245 CSS).**
+Beide Prototypen sitzen exakt darin, geprüft über je fünf Zeitpunkte.
+
+Die Zahlen für Button-Spalte und Caption-Bereich sind die üblichen
+Richtwerte beider Plattformen, nicht an deinem Konto gemessen — die
+Oberflächen ändern sich gelegentlich. Wenn dir etwas zu knapp erscheint,
+sind es zwei Konstanten pro Szene.
+
+**Folge für die Gestaltung:** In 245 CSS-Pixeln Höhe ist kein Nebeneinander
+von zwei Figuren mehr lesbar. Vergleiche laufen deshalb als *Wechsel einer
+Figur* über die Zeit statt als Gegenüberstellung im Raum — so gelöst in ov2.
