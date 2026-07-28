@@ -11,11 +11,6 @@ html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;ov
 #stage{position:relative;width:720px;height:1280px;
        font-family:'Inter';font-weight:700;font-variant-numeric:tabular-nums;}
 
-.tophead{position:absolute;left:48px;top:66px;width:624px;text-align:center;}
-.tophead span{display:inline-block;padding:13px 26px;border-radius:14px;
-  background:rgba(11,13,18,0.88);border:1px solid rgba(255,255,255,0.12);
-  color:#fff;font-size:27px;font-weight:800;letter-spacing:1.2px;}
-
 .card{position:absolute;left:48px;top:800px;width:624px;height:338px;
   box-sizing:border-box;border-radius:20px;
   background:rgba(11,13,18,0.86);border:1px solid rgba(255,255,255,0.12);}
@@ -24,19 +19,18 @@ html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;ov
 
 /* Figuren so gross wie das freie Band es zulaesst — die Haltung muss
    auf dem Handy lesbar sein, sonst traegt die Grafik nichts bei. */
-.panel{position:absolute;top:40px;width:300px;text-align:center;}
-.panel svg{width:225px;height:246px;}
-.plab{position:absolute;top:290px;width:300px;text-align:center;
+.panel{position:absolute;top:42px;width:300px;text-align:center;}
+.panel svg{width:188px;height:206px;}
+.plab{position:absolute;top:252px;width:300px;text-align:center;
   font-size:24px;font-weight:800;letter-spacing:0.8px;}
 .pdeg{font-weight:500;color:#9AA1AC;}
 
-/* Ursachen liegen im oberen freien Band, nicht in der Karte —
-   dadurch bleibt unten Platz fuer die Figuren. */
-.chips{position:absolute;left:48px;top:132px;width:624px;
-  display:flex;gap:10px;justify-content:center;}
-.chip{padding:9px 15px;border-radius:12px;background:rgba(11,13,18,0.88);
-  border:1px solid rgba(255,255,255,0.16);color:#fff;
-  font-size:18px;font-weight:700;letter-spacing:0.4px;white-space:nowrap;}
+/* Ursachen sitzen in der Karte — oben im Bild soll nichts stehen. */
+.chips{position:absolute;left:24px;top:288px;width:576px;
+  display:flex;gap:9px;justify-content:center;}
+.chip{padding:8px 13px;border-radius:11px;background:rgba(255,255,255,0.10);
+  border:1px solid rgba(255,255,255,0.15);color:#fff;
+  font-size:17px;font-weight:700;letter-spacing:0.4px;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -94,7 +88,6 @@ const stage = document.getElementById('stage');
 const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
                         return stage.lastElementChild; };
 
-const head = add(`<div class="tophead"><span>WARUM DER BAUCH VORSTEHT</span></div>`);
 const card = add(`<div class="card"></div>`);
 const inC = (html) => { card.insertAdjacentHTML('beforeend', html);
                         return card.lastElementChild; };
@@ -108,7 +101,7 @@ const labL = inC(`<div class="plab" style="left:12px;color:${RED}">HOHLKREUZ
 const labR = inC(`<div class="plab" style="left:312px;color:${GREEN}">NEUTRAL
                     <span class="pdeg">≈0°</span></div>`);
 
-const chipWrap = add(`<div class="chips"></div>`);
+const chipWrap = inC(`<div class="chips"></div>`);
 const CHIPS = ['SITZEN', 'VERKÜRZUNGEN', 'SCHWACHE HÜFTSTRECKER'];
 const chips = CHIPS.map(c => {
   chipWrap.insertAdjacentHTML('beforeend', `<div class="chip">${c}</div>`);
@@ -135,7 +128,6 @@ window.seek = function(t){
   const outP = 1 - outCubic(seg(t, 5.50, 5.90));
   stage.style.opacity = Math.min(inP, outP);
 
-  fade(head,  outCubic(seg(t, 0.10, 0.60)), -14);
   fade(card,  outCubic(seg(t, 0.00, 0.50)), 18);
   fade(chead, outCubic(seg(t, 0.35, 0.80)), 6);
 

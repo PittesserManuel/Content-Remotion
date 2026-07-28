@@ -12,12 +12,6 @@ html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;ov
 #stage{position:relative;width:720px;height:1280px;
        font-family:'Inter';font-weight:700;font-variant-numeric:tabular-nums;}
 
-/* Kopfzeile im oberen freien Band (gemessen: y 0..160 ruhig) */
-.tophead{position:absolute;left:56px;top:66px;width:608px;text-align:center;}
-.tophead span{display:inline-block;padding:13px 26px;border-radius:14px;
-  background:rgba(11,13,18,0.88);border:1px solid rgba(255,255,255,0.12);
-  color:#fff;font-size:27px;font-weight:800;letter-spacing:1.2px;}
-
 /* Karte im unteren freien Band (gemessen: y 800..1140 ruhig, Untertitel enden y 787) */
 .card{position:absolute;left:56px;top:818px;width:608px;height:296px;
   box-sizing:border-box;padding:22px 24px;border-radius:20px;
@@ -62,7 +56,6 @@ const stage = document.getElementById('stage');
 const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
                         return stage.lastElementChild; };
 
-const head = add(`<div class="tophead"><span>WO DER KÖRPER ZUERST ABBAUT</span></div>`);
 const card = add(`<div class="card"></div>`);
 const inC  = (html) => { card.insertAdjacentHTML('beforeend', html);
                          return card.lastElementChild; };
@@ -96,8 +89,7 @@ window.seek = function(t){
   const outP = 1 - outCubic(seg(t, 5.10, 5.50));
   stage.style.opacity = Math.min(inP, outP);
 
-  /* 1 — Kopfzeile und Karte */
-  fade(head, outCubic(seg(t, 0.10, 0.60)), -14);
+  /* 1 — Karte */
   fade(card, outCubic(seg(t, 0.00, 0.50)), 18);
   fade(chead, outCubic(seg(t, 0.35, 0.80)), 6);
 
