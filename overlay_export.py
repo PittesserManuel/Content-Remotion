@@ -7,15 +7,23 @@ kann man auch nicht abnehmen.
   out/<name>.mp4   Szene ueber das Originalmaterial gerechnet. Sichtbar,
                    ueberall abspielbar, direkt in den Schnitt zu legen.
 
-  out/<name>.mov   NUR mit --alpha: QuickTime Animation (qtrle), freigestellt,
-                   verlustfrei. Fuer eine eigene Spur ueber eigenes Material.
-                   Klein, weil die Flaeche zu ~85 % transparent ist und RLE
-                   genau darauf ausgelegt ist — ProRes 4444 waere achtmal
-                   so gross bei gleichem Bild.
+Mit --alpha kommen die freigestellten Dateien dazu:
+
+  out/<name>.mov          QuickTime Animation (qtrle), Alphakanal, verlustfrei.
+                          Klein, weil die Flaeche zu ~85 % transparent ist und
+                          RLE genau darauf ausgelegt ist.
+  out/<name>_prores.mov   ProRes 4444, Alphakanal. Achtmal so gross, dafuer das
+                          Format, das jedes Schnittprogramm sicher liest.
+                          Nehmen, falls CapCut die qtrle-Datei ablehnt.
+  out/<name>_check.mp4    Kontrollclip: der Alphakanal DER EXPORTIERTEN DATEI
+                          ueber ein Schachbrett gelegt. Normal abspielbar.
+                          Damit laesst sich ohne Schnittprogramm pruefen, was
+                          wirklich in der freigestellten Datei steht — sonst
+                          faellt ein kaputter Alphakanal erst im Schnitt auf.
 
   python3 overlay_export.py --source=<video.mp4>
   python3 overlay_export.py --source=<video.mp4> --only=ov3
-  python3 overlay_export.py --source=<video.mp4> --alpha
+  python3 overlay_export.py --alpha
 
 Die Startzeiten sind dieselben wie in videos/sarah_unterbauch/BEATS.md.
 Aendert sich dort ein Beat, wird er hier mitgeaendert — sonst laeuft die
@@ -73,6 +81,27 @@ for key, scene, start, name in OVERLAYS:
              "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
              "-c:v", "qtrle", "-pix_fmt", "argb", str(mov)])
         print(f"  {mov.name}  {mov.stat().st_size/1e6:.1f} MB  (Alpha, verlustfrei)")
+
+        pro = OUT / f"{name}_prores.mov"
+        run([FF, "-hide_banner", "-loglevel", "error", "-y",
+             "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
+             "-c:v", "prores_ks", "-profile:v", "4444",
+             "-pix_fmt", "yuva444p10le", "-alpha_bits", "8", "-vendor", "apl0",
+             str(pro)])
+        print(f"  {pro.name}  {pro.stat().st_size/1e6:.1f} MB  (Alpha, ProRes)")
+
+        # Kontrollclip: liest die FERTIGE .mov zurueck und legt sie ueber ein
+        # Schachbrett. Was hier zu sehen ist, steht wirklich in der Datei.
+        chk = OUT / f"{name}_check.mp4"
+        board = (f"nullsrc=s=1080x1920:d={dur:.3f}:r={FPS},"
+                 f"geq=lum='if(eq(mod(floor(X/60)+floor(Y/60)\\,2)\\,0)\\,205\\,150)'"
+                 f":cb=128:cr=128,format=yuv420p")
+        run([FF, "-hide_banner", "-loglevel", "error", "-y",
+             "-f", "lavfi", "-i", board, "-i", str(mov),
+             "-filter_complex", "[0:v][1:v]overlay=0:0:format=auto[o]",
+             "-map", "[o]", "-r", str(FPS), "-c:v", "libx264", "-crf", "20",
+             "-preset", "veryfast", "-pix_fmt", "yuv420p", str(chk)])
+        print(f"  {chk.name}  {chk.stat().st_size/1e6:.1f} MB  (Kontrolle)")
 
     # 2) die Standardausgabe: ueber das Originalmaterial gerechnet
     if SOURCE:
