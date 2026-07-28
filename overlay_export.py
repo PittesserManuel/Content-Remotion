@@ -1,18 +1,21 @@
 """Exportiert Overlay-Szenen fuer den Schnitt.
 
-Je Szene entstehen zwei Dateien:
+Standard ist die fertig gerechnete Fassung — freigestellte Dateien lassen
+sich auf den meisten Geraeten nicht ansehen, und was man nicht ansehen kann,
+kann man auch nicht abnehmen.
 
-  out/<name>.mov   QuickTime Animation (qtrle) mit Alphakanal — die Datei
-                   fuer CapCut, Premiere, DaVinci, Final Cut. Auf eine eigene
-                   Spur ueber das Videomaterial legen, sie ist freigestellt.
-                   Verlustfrei und trotzdem klein: die Flaeche ist zu ~85 %
-                   transparent, und genau darauf ist RLE ausgelegt. ProRes
-                   4444 waere hier rund achtmal so gross bei gleichem Bild.
-  out/<name>.mp4   Vorschau: dieselbe Szene bereits ueber das Original
-                   gerechnet, nur zum Anschauen und Abnehmen.
+  out/<name>.mp4   Szene ueber das Originalmaterial gerechnet. Sichtbar,
+                   ueberall abspielbar, direkt in den Schnitt zu legen.
+
+  out/<name>.mov   NUR mit --alpha: QuickTime Animation (qtrle), freigestellt,
+                   verlustfrei. Fuer eine eigene Spur ueber eigenes Material.
+                   Klein, weil die Flaeche zu ~85 % transparent ist und RLE
+                   genau darauf ausgelegt ist — ProRes 4444 waere achtmal
+                   so gross bei gleichem Bild.
 
   python3 overlay_export.py --source=<video.mp4>
   python3 overlay_export.py --source=<video.mp4> --only=ov3
+  python3 overlay_export.py --source=<video.mp4> --alpha
 
 Die Startzeiten sind dieselben wie in videos/sarah_unterbauch/BEATS.md.
 Aendert sich dort ein Beat, wird er hier mitgeaendert — sonst laeuft die
@@ -39,6 +42,7 @@ arg = lambda k, d=None: next(
 
 SOURCE = arg("source")
 ONLY = arg("only")
+ALPHA = "--alpha" in sys.argv      # freigestellte Zusatzdatei erzeugen
 OUT = HERE / "out"
 OUT.mkdir(exist_ok=True)
 
@@ -62,23 +66,15 @@ for key, scene, start, name in OVERLAYS:
          f"--scene={scene}", f"--scale={SCALE}", "--alpha"])
     n, dur = frames_dauer()
 
-    # 1) freigestellt, mit Alphakanal — die Datei fuer das Schnittprogramm
-    mov = OUT / f"{name}.mov"
-    run([FF, "-hide_banner", "-loglevel", "error", "-y",
-         "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
-         "-c:v", "qtrle", "-pix_fmt", "argb", str(mov)])
-    print(f"  {mov.name}  {mov.stat().st_size/1e6:.1f} MB  {dur:.2f}s  (Alpha, verlustfrei)")
+    # 1) freigestellt — nur auf Anforderung, siehe Kopf der Datei
+    if ALPHA:
+        mov = OUT / f"{name}.mov"
+        run([FF, "-hide_banner", "-loglevel", "error", "-y",
+             "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
+             "-c:v", "qtrle", "-pix_fmt", "argb", str(mov)])
+        print(f"  {mov.name}  {mov.stat().st_size/1e6:.1f} MB  (Alpha, verlustfrei)")
 
-    # 1b) noch kleinere Fassung fuer Programme, die WebM mit Alpha lesen.
-    #     CapCut tut das nicht zuverlaessig — deshalb ist .mov die Hauptdatei.
-    webm = OUT / f"{name}.webm"
-    run([FF, "-hide_banner", "-loglevel", "error", "-y",
-         "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
-         "-c:v", "vp9", "-pix_fmt", "yuva420p", "-b:v", "2M",
-         "-auto-alt-ref", "0", str(webm)])
-    print(f"  {webm.name}  {webm.stat().st_size/1e6:.1f} MB  (Alpha, klein)")
-
-    # 2) Vorschau ueber das Original, nur zum Abnehmen
+    # 2) die Standardausgabe: ueber das Originalmaterial gerechnet
     if SOURCE:
         mp4 = OUT / f"{name}.mp4"
         run([FF, "-hide_banner", "-loglevel", "error", "-y",
@@ -90,6 +86,6 @@ for key, scene, start, name in OVERLAYS:
              "-c:v", "libx264", "-crf", "18", "-preset", "slow",
              "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
              "-movflags", "+faststart", str(mp4)])
-        print(f"  {mp4.name}  {mp4.stat().st_size/1e6:.1f} MB  ab {start}s  (Vorschau)")
+        print(f"  {mp4.name}  {mp4.stat().st_size/1e6:.1f} MB  ab {start}s")
 
 print("\nfertig")
