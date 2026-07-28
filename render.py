@@ -9,6 +9,10 @@ Ergebnis, unabhaengig von Rechenlast oder Framerate der Maschine.
 --scale skaliert nur die Ausgabe (deviceScaleFactor); das Layout bleibt bei
 720x1280 CSS-Pixeln. Schrift und SVG werden dadurch neu gerastert statt
 hochskaliert. 1.5 => 1080x1920, 2 => 1440x2560.
+
+--alpha schiesst mit transparentem Hintergrund (PNG mit Alphakanal), damit
+die Szene ueber Footage gelegt werden kann. Die Szene muss dafuer selbst
+einen transparenten Body haben.
 """
 import os, sys, pathlib
 from playwright.sync_api import sync_playwright
@@ -18,6 +22,7 @@ FPS = 30
 W, H = 720, 1280          # CSS-Layoutgroesse — bleibt fix
 SCALE = float(next((a.split("=")[1] for a in sys.argv if a.startswith("--scale=")), 1))
 SCENE = next((a.split("=")[1] for a in sys.argv if a.startswith("--scene=")), "scene.html")
+ALPHA = "--alpha" in sys.argv
 OUT_W, OUT_H = int(W * SCALE), int(H * SCALE)
 
 OUT = HERE / "frames"
@@ -52,7 +57,7 @@ with sync_playwright() as p:
     n = int(round(duration * FPS))
     for i in range(n):
         page.evaluate("t => window.seek(t)", i / FPS)
-        page.screenshot(path=str(OUT / f"f_{i:04d}.png"))
+        page.screenshot(path=str(OUT / f"f_{i:04d}.png"), omit_background=ALPHA)
         if i % 30 == 0:
             print(f"  frame {i}/{n}", flush=True)
     b.close()

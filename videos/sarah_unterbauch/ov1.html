@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-500.ttf') format('truetype'); font-weight:500; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-700.ttf') format('truetype'); font-weight:700; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-800.ttf') format('truetype'); font-weight:800; }
+
+/* transparent — die Szene wird ueber Footage gelegt */
+html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;overflow:hidden;}
+#stage{position:relative;width:720px;height:1280px;
+       font-family:'Inter';font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* Kopfzeile im oberen freien Band (gemessen: y 0..160 ruhig) */
+.tophead{position:absolute;left:56px;top:66px;width:608px;text-align:center;}
+.tophead span{display:inline-block;padding:13px 26px;border-radius:14px;
+  background:rgba(11,13,18,0.88);border:1px solid rgba(255,255,255,0.12);
+  color:#fff;font-size:27px;font-weight:800;letter-spacing:1.2px;}
+
+/* Karte im unteren freien Band (gemessen: y 800..1140 ruhig, Untertitel enden y 787) */
+.card{position:absolute;left:56px;top:818px;width:608px;height:296px;
+  box-sizing:border-box;padding:22px 24px;border-radius:20px;
+  background:rgba(11,13,18,0.86);border:1px solid rgba(255,255,255,0.12);}
+
+.chead{position:absolute;left:24px;top:20px;font-size:22px;letter-spacing:1.6px;color:#9AA1AC;}
+.ckg{position:absolute;right:24px;top:12px;font-size:36px;font-weight:800;color:#AFFF00;}
+
+.row{position:absolute;left:24px;width:560px;height:26px;}
+.rlabel{position:absolute;left:0;top:3px;font-size:21px;letter-spacing:0.6px;color:#fff;}
+.track{position:absolute;left:196px;top:6px;width:364px;height:14px;border-radius:7px;
+  background:rgba(255,255,255,0.13);overflow:hidden;}
+.fill{position:absolute;left:0;top:0;height:14px;border-radius:7px;background:#AFFF00;}
+
+.foot{position:absolute;left:24px;bottom:20px;font-size:24px;font-weight:800;
+  letter-spacing:0.4px;color:#fff;}
+.foot b{color:#D40E0E;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+/* ------------------------------------------------------------------ *
+ * Overlay 1 — Fettabbau nach Zonen (Beat K1, 0:12,0-0:17,5)           *
+ * Alles ist eine reine Funktion von t (window.seek).                  *
+ * Liegt in den gemessenen freien Baendern des Materials:              *
+ *   Untertitel-Umschlag  y 533..787 (CSS)  -> gemieden                *
+ * ------------------------------------------------------------------ */
+
+const GREEN = '#AFFF00', RED = '#D40E0E';
+
+/* [Zone, Restanteil am Ende in %, Startzeit des Abbaus] */
+const ZONES = [
+  ['ARME',       18, 1.00],
+  ['BEINE',      28, 1.30],
+  ['OBERBAUCH',  42, 1.60],
+  ['UNTERBAUCH', 84, 1.95],
+];
+const LAST = ZONES.length - 1;
+
+const stage = document.getElementById('stage');
+const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
+                        return stage.lastElementChild; };
+
+const head = add(`<div class="tophead"><span>WO DER KÖRPER ZUERST ABBAUT</span></div>`);
+const card = add(`<div class="card"></div>`);
+const inC  = (html) => { card.insertAdjacentHTML('beforeend', html);
+                         return card.lastElementChild; };
+
+const chead = inC(`<div class="chead">FETTABBAU NACH ZONEN</div>`);
+const ckg   = inC(`<div class="ckg">0,0 KG</div>`);
+
+const rows = ZONES.map(([name,,], i) => {
+  const el = inC(`<div class="row" style="top:${72 + i*46}px">
+      <div class="rlabel">${name}</div>
+      <div class="track"><div class="fill"></div></div></div>`);
+  return { el, label: el.querySelector('.rlabel'), fill: el.querySelector('.fill') };
+});
+
+const foot = inC(`<div class="foot">DER UNTERBAUCH GEHT <b>ZULETZT</b></div>`);
+
+/* ---------- Easing ---------- */
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const outCubic=x=>1-Math.pow(1-x,3);
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const lerp=(a,b,p)=>a+(b-a)*p;
+const fade=(el,p,dy=12)=>{el.style.opacity=p;
+  el.style.transform=`translateY(${lerp(dy,0,p)}px)`;};
+
+/* ---------- Timeline ---------- */
+window.DURATION = 5.5;
+
+window.seek = function(t){
+  /* 0 — Ein- und Ausblende der ganzen Einblendung */
+  const inP  = outCubic(seg(t, 0.00, 0.45));
+  const outP = 1 - outCubic(seg(t, 5.10, 5.50));
+  stage.style.opacity = Math.min(inP, outP);
+
+  /* 1 — Kopfzeile und Karte */
+  fade(head, outCubic(seg(t, 0.10, 0.60)), -14);
+  fade(card, outCubic(seg(t, 0.00, 0.50)), 18);
+  fade(chead, outCubic(seg(t, 0.35, 0.80)), 6);
+
+  /* 2 — Zaehler laeuft auf 6,0 kg */
+  const kg = lerp(0, 6.0, outCubic(seg(t, 0.90, 2.90)));
+  ckg.textContent = '−' + kg.toFixed(1).replace('.', ',') + ' KG';
+  fade(ckg, outCubic(seg(t, 0.70, 1.10)), 8);
+
+  /* 3 — die Zonen bauen gestaffelt ab, der Unterbauch zuletzt und kaum */
+  rows.forEach((r, i) => {
+    const [, rest, t0] = ZONES[i];
+    fade(r.el, outCubic(seg(t, 0.55 + i*0.10, 0.95 + i*0.10)), 8);
+    const drain = outCubic(seg(t, t0, t0 + 0.85));
+    r.fill.style.width = lerp(100, rest, drain) + '%';
+  });
+
+  /* 4 — die Pointe: der Unterbauch wird rot markiert */
+  const mark = outCubic(seg(t, 3.15, 3.60));
+  rows[LAST].fill.style.background = mixHex(GREEN, RED, mark);
+  rows[LAST].label.style.color = mixHex('#FFFFFF', RED, mark);
+  rows[LAST].label.style.fontWeight = mark > 0.5 ? 800 : 700;
+
+  fade(foot, outCubic(seg(t, 3.55, 4.05)), 10);
+
+  /* 5 — der markierte Balken pulsiert leicht nach */
+  const pulse = t > 3.80 ? 1 + 0.055*Math.abs(Math.sin((t-3.80)*Math.PI*1.5)) : 1;
+  rows[LAST].fill.style.transform = `scaleY(${pulse})`;
+};
+
+function mixHex(a,b,p){
+  const h=s=>[1,3,5].map(i=>parseInt(s.substr(i,2),16));
+  const [r1,g1,b1]=h(a),[r2,g2,b2]=h(b);
+  const c=(x,y)=>Math.round(lerp(x,y,p)).toString(16).padStart(2,'0');
+  return `#${c(r1,r2)}${c(g1,g2)}${c(b1,b2)}`;
+}
+
+window.seek(0);
+document.fonts.ready.then(()=>{ window.FONTS_READY = true; });
+</script>
+</body>
+</html>
