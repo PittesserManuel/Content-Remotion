@@ -12,9 +12,11 @@ Mit --alpha kommen die freigestellten Dateien dazu:
   out/<name>.mov          QuickTime Animation (qtrle), Alphakanal, verlustfrei.
                           Klein, weil die Flaeche zu ~85 % transparent ist und
                           RLE genau darauf ausgelegt ist.
-  out/<name>_prores.mov   ProRes 4444, Alphakanal. Achtmal so gross, dafuer das
-                          Format, das jedes Schnittprogramm sicher liest.
-                          Nehmen, falls CapCut die qtrle-Datei ablehnt.
+  out/<name>_prores.mov   ProRes 4444, Alphakanal, qscale 26. Rueckfallebene,
+                          falls ein Schnittprogramm qtrle ablehnt — ProRes
+                          liest praktisch jedes. qscale 26 statt der Vorgabe,
+                          weil die Datei sonst ueber 30 MB geht, ohne dass man
+                          bei flaechiger Grafik einen Unterschied sieht.
   out/<name>_check.mp4    Kontrollclip: der Alphakanal DER EXPORTIERTEN DATEI
                           ueber ein Schachbrett gelegt. Normal abspielbar.
                           Damit laesst sich ohne Schnittprogramm pruefen, was
@@ -86,8 +88,8 @@ for key, scene, start, name in OVERLAYS:
         run([FF, "-hide_banner", "-loglevel", "error", "-y",
              "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
              "-c:v", "prores_ks", "-profile:v", "4444",
-             "-pix_fmt", "yuva444p10le", "-alpha_bits", "8", "-vendor", "apl0",
-             str(pro)])
+             "-pix_fmt", "yuva444p10le", "-alpha_bits", "8",
+             "-qscale:v", "26", "-vendor", "apl0", str(pro)])
         print(f"  {pro.name}  {pro.stat().st_size/1e6:.1f} MB  (Alpha, ProRes)")
 
         # Kontrollclip: liest die FERTIGE .mov zurueck und legt sie ueber ein
