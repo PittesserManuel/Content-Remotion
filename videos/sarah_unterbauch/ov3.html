@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-500.ttf') format('truetype'); font-weight:500; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-700.ttf') format('truetype'); font-weight:700; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-800.ttf') format('truetype'); font-weight:800; }
+
+html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;overflow:hidden;}
+#stage{position:relative;width:720px;height:1280px;
+       font-family:'Inter';font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* Plattformsicheres Feld — siehe BEATS.md. Bild = 1.5x. */
+.card{position:absolute;left:40px;top:795px;width:573px;height:245px;
+  box-sizing:border-box;border-radius:18px;
+  background:rgba(11,13,18,0.86);border:1px solid rgba(255,255,255,0.12);}
+
+.chead{position:absolute;left:20px;top:14px;font-size:19px;letter-spacing:1.5px;color:#9AA1AC;}
+
+.fig{position:absolute;left:12px;top:40px;width:164px;height:186px;}
+.fig svg{position:absolute;left:0;top:0;width:164px;height:186px;}
+
+.state{position:absolute;left:190px;top:44px;width:363px;
+  font-size:24px;font-weight:800;letter-spacing:0.6px;}
+.mark{font-size:22px;}
+.sub{position:absolute;left:190px;top:86px;width:363px;
+  font-size:19px;font-weight:500;line-height:1.35;color:#D7DBE0;}
+.metric{position:absolute;left:190px;top:172px;width:363px;
+  font-size:18px;font-weight:700;letter-spacing:0.8px;color:#9AA1AC;}
+.metric b{font-weight:800;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+/* ------------------------------------------------------------------ *
+ * Overlay 3 — Posieren gegen leichte Beugung (Beat K4, 0:34,6-0:40,0) *
+ * Dieselbe Seitenansicht wie ov2, nur andere Zustaende.               *
+ * Alles ist eine reine Funktion von t (window.seek).                  *
+ * ------------------------------------------------------------------ */
+
+const GREEN = '#AFFF00', RED = '#D40E0E', BONE = '#E7E9EC',
+      MUTE = '#5A616B',      /* Lot, bewusst zurueckhaltend */
+      SKIN = '#9BA5B2';      /* Bauch- und Rueckenkontur — traegt die Aussage */
+
+/* Zwei Zustaende, ueberblendet statt interpoliert.
+   Sie sagt genau zwei Dinge: nicht wie fuers Foto, sondern leicht
+   gebeugt — ein dritter Zwischenzustand stuende nicht im Text. */
+const POSE = {
+  posiert: {
+    spine: 'M92,48 C112,76 126,106 108,133 C98,151 87,167 96,181',
+    lumbar:'M117,117 C106,143 87,167 96,181',
+    belly: 'M105,76 C152,102 154,148 109,167',
+    back:  'M77,78 C51,112 62,152 85,173',
+    pelvis:'74,170 122,167 114,201 82,204',
+    rot:   -28,
+    legs:  ['M86,198 L73,236','M110,196 L117,236'],
+  },
+  beugung: {
+    spine: 'M92,48 C99,76 103,108 99,136 C96,154 94,168 96,180',
+    lumbar:'M101,120 C98,148 95,169 96,180',
+    belly: 'M99,78 C118,106 118,146 100,166',
+    back:  'M84,78 C73,112 77,152 89,170',
+    pelvis:'76,172 120,172 112,203 84,203',
+    rot:   7,
+    legs:  ['M88,201 L86,236','M108,201 L110,236'],
+  },
+};
+
+const figSvg = (p, accent) => `<svg viewBox="0 0 220 250">
+  <path d="M96,14 L96,242" stroke="${MUTE}" stroke-width="2"
+        stroke-dasharray="6 8" opacity="0.75"/>
+  <circle cx="92" cy="26" r="18" fill="${BONE}"/>
+  <path d="${p.belly}" fill="none" stroke="${SKIN}" stroke-width="7" stroke-linecap="round"/>
+  <path d="${p.back}"  fill="none" stroke="${SKIN}" stroke-width="7" stroke-linecap="round"/>
+  <g transform="rotate(${p.rot} 98 184)">
+    <polygon points="${p.pelvis}" fill="${BONE}" opacity="0.92"/>
+    ${p.legs.map(d=>`<path d="${d}" stroke="${BONE}" stroke-width="11"
+        stroke-linecap="round" fill="none"/>`).join('')}
+  </g>
+  <path d="${p.spine}" fill="none" stroke="${BONE}" stroke-width="9" stroke-linecap="round"/>
+  <path class="lum" d="${p.lumbar}" fill="none" stroke="${accent}" stroke-width="9"
+        stroke-linecap="round" opacity="0"/>
+</svg>`;
+
+const stage = document.getElementById('stage');
+const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
+                        return stage.lastElementChild; };
+const card = add(`<div class="card"></div>`);
+const inC = (html) => { card.insertAdjacentHTML('beforeend', html);
+                        return card.lastElementChild; };
+
+const chead = inC(`<div class="chead">STAND · HÜFTE</div>`);
+
+const fig = inC(`<div class="fig"></div>`);
+fig.insertAdjacentHTML('beforeend', figSvg(POSE.posiert, RED));
+fig.insertAdjacentHTML('beforeend', figSvg(POSE.beugung, GREEN));
+const svgP = fig.children[0], svgB = fig.children[1];
+const lumP = svgP.querySelector('.lum'), lumB = svgB.querySelector('.lum');
+
+const stP = inC(`<div class="state" style="color:${RED}">
+                   <span class="mark">✗</span> WIE FÜRS FOTO</div>`);
+const stB = inC(`<div class="state" style="color:${GREEN}">
+                   <span class="mark">✓</span> LEICHTE BEUGUNG</div>`);
+
+const subP = inC(`<div class="sub">Becken kippt nach vorn,<br>der Bauch schiebt sich raus.</div>`);
+const subB = inC(`<div class="sub">Hüfte nur leicht gebeugt,<br>der Bauch bleibt flach.</div>`);
+
+const mtP = inC(`<div class="metric">BECKENKIPPUNG <b style="color:${RED}">≈28°</b></div>`);
+const mtB = inC(`<div class="metric">BECKENKIPPUNG <b style="color:${GREEN}">≈7°</b></div>`);
+
+/* ---------- Easing ---------- */
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const outCubic=x=>1-Math.pow(1-x,3);
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const lerp=(a,b,p)=>a+(b-a)*p;
+const fade=(el,p,dy=12)=>{el.style.opacity=p;
+  el.style.transform=`translateY(${lerp(dy,0,p)}px)`;};
+
+/* ---------- Timeline ---------- */
+window.DURATION = 5.4;
+
+window.seek = function(t){
+  /* 0 — Ein- und Ausblende der ganzen Einblendung */
+  const inP  = outCubic(seg(t, 0.00, 0.45));
+  const outP = 1 - outCubic(seg(t, 5.00, 5.40));
+  stage.style.opacity = Math.min(inP, outP);
+
+  fade(card,  outCubic(seg(t, 0.00, 0.50)), 18);
+  fade(chead, outCubic(seg(t, 0.30, 0.75)), 6);
+
+  /* 1 — der Fehler zuerst: die Pose fuers Foto */
+  fade(fig, outCubic(seg(t, 0.40, 0.90)), 14);
+  lumP.style.opacity = outCubic(seg(t, 1.10, 1.60));
+
+  /* 2 — der Wechsel auf die leichte Beugung */
+  const sw = outCubic(seg(t, 3.20, 3.85));
+  svgP.style.opacity = 1 - sw;
+  svgB.style.opacity = sw;
+  lumB.style.opacity = outCubic(seg(t, 3.90, 4.35));
+
+  /* 3 — Beschriftung wechselt mit der Figur */
+  const upP = outCubic(seg(t, 0.80, 1.25));
+  fade(stP,  Math.min(upP, 1 - sw), 8);
+  fade(subP, Math.min(outCubic(seg(t, 1.45, 1.95)), 1 - sw), 8);
+  fade(mtP,  Math.min(outCubic(seg(t, 2.15, 2.60)), 1 - sw), 8);
+
+  fade(stB,  sw, 8);
+  fade(subB, Math.min(sw, outCubic(seg(t, 3.55, 4.05))), 8);
+  fade(mtB,  Math.min(sw, outCubic(seg(t, 3.85, 4.35))), 8);
+
+  /* 4 — die markierte Lendenwirbelsaeule pulsiert leicht nach */
+  lumP.style.strokeWidth = t > 1.60
+      ? 9 + 1.8*Math.abs(Math.sin((t-1.60)*Math.PI*1.3)) : 9;
+};
+
+window.seek(0);
+document.fonts.ready.then(()=>{ window.FONTS_READY = true; });
+</script>
+</body>
+</html>

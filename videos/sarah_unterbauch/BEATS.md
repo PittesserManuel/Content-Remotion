@@ -1,6 +1,6 @@
 # Beat-Liste — Sarah / Unterbauchfett
 
-**Status: Entwurf zur Korrektur. Noch nichts gebaut.**
+**Status:** K1, K3, K4, K6 gebaut (`ov1`–`ov4`). O2, O5, O7, O8 offen.
 
 Quelle: `Sarah_22.mp4`, 72,85 s, 1080×1920, 59,94 fps, deutsch.
 Transkript: `transcript.json` (ElevenLabs scribe_v1, Sprachsicherheit 1.0).
@@ -46,7 +46,7 @@ Bereits im Material enthalten (nicht doppeln):
 `K` = Kern, würde ich auf jeden Fall bauen.
 `O` = optional, fällt zuerst raus, wenn es zu grafiklastig wird.
 
-### K1 — 0:12,0–0:17,5 (5,5 s) · Fettabbau nach Zonen
+### K1 — 0:12,0–0:17,5 (5,5 s) · Fettabbau nach Zonen — **gebaut, `ov1.html`**
 
 > „Der Körper baut an manchen Zonen eher später erst die Fettreserven ab."
 
@@ -68,7 +68,7 @@ Zwei gegenläufige Balken oder eine kippende Waage:
 die Pointe, nicht ein Gegeneinander.
 Kommt als Callback bei O8 wieder.
 
-### K3 — 0:28,6–0:34,5 (5,9 s) · Haltung, Seitenansicht
+### K3 — 0:28,6–0:34,5 (5,9 s) · Haltung, Seitenansicht — **gebaut, `ov2.html`**
 
 > „Oft entsteht unser Bauch durch ein krummes Dastehen, gefördert von
 > Sitzen, Verkürzungen oder schwachen Hüftstreckern."
@@ -83,14 +83,17 @@ Die drei Ursachen docken gestaffelt als Chips an die linke Figur an:
 Stärkster Beat des Videos — der Zusammenhang „Haltung macht Bauch" ist in
 Worten schwer, als Seitenansicht sofort klar.
 
-### K4 — 0:34,6–0:40,0 (5,4 s) · Posieren gegen leichte Beugung
+### K4 — 0:34,6–0:40,0 (5,4 s) · Posieren gegen leichte Beugung — **gebaut, `ov3.html`**
 
 > „Nicht so dastehen, wie wenn du für ein Foto posen würdest, sondern nur
 > mit einer leichten Beugung in der Hüfte."
 
-Dieselbe Silhouette wie K3, drei Zustände nacheinander:
-`POSIERT` ✗ → `ÜBERKORRIGIERT` ✗ → `LEICHTE BEUGUNG` ✓.
-Hüftwinkel als Bogen, der sich mitbewegt. Grün nur beim dritten Zustand.
+Dieselbe Seitenansicht wie K3, zwei Zustände: `WIE FÜRS FOTO` ✗ →
+`LEICHTE BEUGUNG` ✓, mit Beckenkippung ≈28° gegen ≈7°.
+
+Beim Bauen auf zwei Zustände gekürzt. Im Entwurf stand noch ein dritter
+(`ÜBERKORRIGIERT`) — den sagt sie im Text nicht, und eine erfundene
+Zwischenstufe hätte ihrer Aussage widersprochen.
 
 Baut auf K3 auf und teilt sich die Silhouetten-Bausteine — zusammen
 deutlich billiger als zwei getrennte Szenen.
@@ -104,7 +107,7 @@ Zwei Ursachen docken an: `STRESS` · `ERNÄHRUNG`.
 Alternative, falls die Kurve zu medizinisch wirkt: nur die beiden Ursachen
 als Icons plus eine Silhouette, die sich sichtbar weitet.
 
-### K6 — 0:48,0–0:54,9 (6,9 s) · Die drei Hebel
+### K6 — 0:48,0–0:54,9 (6,9 s) · Die drei Hebel — **gebaut, `ov4.html`**
 
 > „Leicht verdauliche Lebensmittel, verträgliche Ballaststoffe und
 > ausreichend gutes Fett und Eiweiß."
@@ -182,3 +185,29 @@ sind es zwei Konstanten pro Szene.
 **Folge für die Gestaltung:** In 245 CSS-Pixeln Höhe ist kein Nebeneinander
 von zwei Figuren mehr lesbar. Vergleiche laufen deshalb als *Wechsel einer
 Figur* über die Zeit statt als Gegenüberstellung im Raum — so gelöst in ov2.
+
+
+---
+
+## Ausgabeformat für den Schnitt
+
+`python3 overlay_export.py --source=<video.mp4>` erzeugt je Szene:
+
+| Datei | Zweck |
+|---|---|
+| `out/<name>.mov` | QuickTime Animation (qtrle), **Alphakanal**, verlustfrei — die Datei fürs Schnittprogramm |
+| `out/<name>.webm` | VP9 mit Alpha, noch kleiner; CapCut liest das aber nicht zuverlässig |
+| `out/<name>.mp4` | Vorschau über das Originalmaterial, nur zur Abnahme |
+
+Codec-Wahl gemessen an derselben Szene (6,9 s, 1080×1920):
+
+| Codec | Größe |
+|---|---|
+| ProRes 4444 | 33,8 MB |
+| ProRes 4444 (qscale 26) | 19 MB |
+| **QuickTime Animation (qtrle)** | **4,5 MB** |
+| VP9/WebM | 0,6 MB |
+
+qtrle gewinnt hier deutlich, weil die Fläche zu ~85 % transparent ist und
+RLE genau darauf ausgelegt ist. Verlustfrei geprüft: der dekodierte Frame
+ist pixelgleich zum gerenderten PNG (maximale Abweichung 0).

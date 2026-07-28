@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-500.ttf') format('truetype'); font-weight:500; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-700.ttf') format('truetype'); font-weight:700; }
+@font-face { font-family:'Inter'; src:url('../../fonts/Inter-800.ttf') format('truetype'); font-weight:800; }
+
+html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;overflow:hidden;}
+#stage{position:relative;width:720px;height:1280px;
+       font-family:'Inter';font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* Plattformsicheres Feld — siehe BEATS.md. Bild = 1.5x. */
+.card{position:absolute;left:40px;top:795px;width:573px;height:245px;
+  box-sizing:border-box;border-radius:18px;
+  background:rgba(11,13,18,0.86);border:1px solid rgba(255,255,255,0.12);}
+
+.chead{position:absolute;left:20px;top:14px;font-size:19px;letter-spacing:1.5px;color:#9AA1AC;}
+
+.row{position:absolute;left:20px;width:533px;height:44px;}
+.chk{position:absolute;left:0;top:2px;width:40px;height:40px;}
+.rlabel{position:absolute;left:56px;top:6px;font-size:23px;font-weight:800;
+  letter-spacing:0.3px;color:#fff;}
+.rnote{position:absolute;left:56px;top:34px;font-size:0px;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+/* ------------------------------------------------------------------ *
+ * Overlay 4 — Die drei Hebel der Verdauung (Beat K6, 0:48,0-0:54,9)   *
+ * Alles ist eine reine Funktion von t (window.seek).                  *
+ * ------------------------------------------------------------------ */
+
+const GREEN = '#AFFF00', INK = '#0B0D12';
+
+/* Ihre drei Punkte, in ihrer Reihenfolge. */
+const HEBEL = [
+  'LEICHT VERDAULICH',
+  'VERTRÄGLICHE BALLASTSTOFFE',
+  'GUTES FETT + EIWEISS',
+];
+
+/* Laenge des Hakenpfads — fuer das Zeichnen per dashoffset. */
+const TICK_LEN = 24;
+
+const chkSvg = () => `<svg viewBox="0 0 40 40">
+  <circle cx="20" cy="20" r="17" fill="none"
+          stroke="rgba(255,255,255,0.28)" stroke-width="3"/>
+  <circle class="disc" cx="20" cy="20" r="17" fill="${GREEN}" opacity="0"/>
+  <path class="tick" d="M12,20.5 L18,26 L28.5,15" fill="none" stroke="${INK}"
+        stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+        stroke-dasharray="${TICK_LEN}" stroke-dashoffset="${TICK_LEN}"/>
+</svg>`;
+
+const stage = document.getElementById('stage');
+const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
+                        return stage.lastElementChild; };
+const card = add(`<div class="card"></div>`);
+const inC = (html) => { card.insertAdjacentHTML('beforeend', html);
+                        return card.lastElementChild; };
+
+const chead = inC(`<div class="chead">VERDAUUNG · WORAUF ACHTEN</div>`);
+
+const rows = HEBEL.map((name, i) => {
+  const el = inC(`<div class="row" style="top:${60 + i*60}px">
+      <div class="chk">${chkSvg()}</div>
+      <div class="rlabel">${name}</div></div>`);
+  return { el,
+           disc: el.querySelector('.disc'),
+           tick: el.querySelector('.tick'),
+           label: el.querySelector('.rlabel') };
+});
+
+/* ---------- Easing ---------- */
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const outCubic=x=>1-Math.pow(1-x,3);
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const lerp=(a,b,p)=>a+(b-a)*p;
+const fade=(el,p,dy=12)=>{el.style.opacity=p;
+  el.style.transform=`translateY(${lerp(dy,0,p)}px)`;};
+
+/* ---------- Timeline ---------- */
+window.DURATION = 6.9;
+
+window.seek = function(t){
+  /* 0 — Ein- und Ausblende der ganzen Einblendung */
+  const inP  = outCubic(seg(t, 0.00, 0.45));
+  const outP = 1 - outCubic(seg(t, 6.50, 6.90));
+  stage.style.opacity = Math.min(inP, outP);
+
+  fade(card,  outCubic(seg(t, 0.00, 0.50)), 18);
+  fade(chead, outCubic(seg(t, 0.30, 0.75)), 6);
+
+  /* 1 — die drei Hebel kommen einzeln, je gut eine Sekunde auseinander:
+         sie nennt sie im Text in genau diesem Abstand */
+  rows.forEach((r, i) => {
+    const t0 = 0.95 + i * 1.15;
+    fade(r.el, outCubic(seg(t, t0, t0 + 0.40)), 12);
+
+    /* Kreis fuellt sich, danach zeichnet sich der Haken */
+    r.disc.style.opacity = outCubic(seg(t, t0 + 0.30, t0 + 0.65));
+    const draw = outCubic(seg(t, t0 + 0.45, t0 + 0.90));
+    r.tick.style.strokeDashoffset = lerp(TICK_LEN, 0, draw);
+
+    /* der zuletzt gesetzte Haken pulsiert kurz nach */
+    const done = t0 + 0.90;
+    const pulse = (t > done && t < done + 0.9)
+        ? 1 + 0.10*Math.abs(Math.sin((t-done)*Math.PI*1.7)) : 1;
+    r.disc.style.transform = `scale(${pulse})`;
+    r.disc.style.transformOrigin = '20px 20px';
+  });
+};
+
+window.seek(0);
+document.fonts.ready.then(()=>{ window.FONTS_READY = true; });
+</script>
+</body>
+</html>
