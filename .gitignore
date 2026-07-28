@@ -1,0 +1,10 @@
+frames/
+out/
+fonts/*.ttf
+fonts/*.css
+sfx/
+*.mp4
+*.webm
+*.jpg
+*.png
+__pycache__/

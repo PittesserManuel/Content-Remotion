@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family:'M'; src:url('fonts/Inter-500.ttf') format('truetype'); font-weight:500; }
+@font-face { font-family:'M'; src:url('fonts/Inter-600.ttf') format('truetype'); font-weight:600; }
+@font-face { font-family:'M'; src:url('fonts/Inter-700.ttf') format('truetype'); font-weight:700; }
+@font-face { font-family:'M'; src:url('fonts/Inter-800.ttf') format('truetype'); font-weight:800; }
+
+html,body{margin:0;padding:0;width:720px;height:1280px;background:#FFFFFF;overflow:hidden;}
+#stage{position:relative;width:720px;height:1280px;font-family:'M';font-weight:700;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;}
+
+.axis{position:absolute;width:2.5px;top:230px;
+      background:repeating-linear-gradient(180deg,#D7DBE0 0 9px,transparent 9px 18px);}
+.tick{position:absolute;width:20px;height:3px;border-radius:2px;background:#D7DBE0;}
+
+.hdr{position:absolute;top:126px;display:flex;align-items:center;gap:8px;}
+.hdr .mg{font-size:27px;letter-spacing:-0.5px;color:#0B0D12;}
+.hdr svg{width:34px;height:40px;}
+
+.tlabel{position:absolute;font-size:28px;font-weight:700;letter-spacing:-0.5px;color:#0B0D12;
+        width:200px;text-align:center;}
+.rval{position:absolute;font-size:26px;font-weight:600;letter-spacing:-0.5px;color:#9AA1AC;width:180px;}
+.lval{position:absolute;font-size:26px;font-weight:700;letter-spacing:-0.5px;width:180px;text-align:right;}
+
+.noon{position:absolute;top:192px;width:200px;text-align:center;
+      font-size:26px;font-weight:600;letter-spacing:0.5px;color:#0B0D12;}
+
+.person{position:absolute;width:110px;text-align:center;}
+.person svg{width:66px;height:70px;}
+.plabel{font-size:27px;font-weight:700;letter-spacing:-0.3px;color:#0B0D12;margin-top:6px;}
+
+.zzz{position:absolute;font-size:26px;color:#0B0D12;}
+.bang{position:absolute;font-size:34px;color:#EF4444;}
+.arrow{position:absolute;width:46px;height:22px;}
+.cupmark{position:absolute;width:40px;height:48px;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Szene 2 — Doppel-Timeline: gleiche Dosis, zwei Stoffwechsel.        *
+ * Alles ist eine reine Funktion von t (window.seek).                  *
+ * ------------------------------------------------------------------ */
+
+const BLUE = '#38BDF8', PINK = '#F472B6', RED = '#EF4444',
+      GREY = '#9AA1AC', INK = '#0B0D12';
+
+const AX_L = 210, AX_R = 530;          // x der beiden Achsen
+const AX_TOP = 230, AX_BOTTOM = 1000;
+
+/* Zeilen: [Uhrzeit, Restmenge beim schnellen Stoffwechsel, y] */
+const ROWS = [
+  ['13:30', '100 MG', 320],
+  ['15:00', '50 MG',  410],
+  ['16:30', '25 MG',  500],
+  ['18:00', '12 MG',  590],
+  ['19:30', '6 MG',   680],
+  ['21:30', '0 MG',   840],
+];
+const LAST = ROWS.length - 1;
+
+const cupSvg = (c) => `<svg viewBox="0 0 44 52">
+  <rect x="3" y="4" width="38" height="9" rx="4.5" fill="${c}"/>
+  <rect x="8" y="0" width="28" height="5" rx="2.5" fill="${c}"/>
+  <path d="M7 16 h30 l-4 32 a6 6 0 0 1 -6 5 h-10 a6 6 0 0 1 -6 -5 z" fill="${c}"/>
+  <rect x="8" y="26" width="28" height="12" fill="#fff" opacity="0.35"/></svg>`;
+
+const personSvg = (c) => `<svg viewBox="0 0 66 70">
+  <circle cx="33" cy="20" r="15" fill="${c}"/>
+  <path d="M4 70 C4 46 62 46 62 70 Z" fill="${c}"/></svg>`;
+
+const arrowSvg = (dir) => `<svg viewBox="0 0 46 22">
+  <rect x="${dir>0?0:14}" y="8" width="32" height="6" fill="${RED}"/>
+  <polygon points="${dir>0?'46,11 28,0 28,22':'0,11 18,0 18,22'}" fill="${RED}"/></svg>`;
+
+/* ---------- DOM aufbauen ---------- */
+const stage = document.getElementById('stage');
+const H = [];
+const add = (html) => { stage.insertAdjacentHTML('beforeend', html);
+                        return stage.lastElementChild; };
+
+const axL = add(`<div class="axis" id="axL" style="left:${AX_L}px"></div>`);
+const axR = add(`<div class="axis" id="axR" style="left:${AX_R}px"></div>`);
+
+const hdrL = add(`<div class="hdr" style="left:${AX_L-118}px">
+   <span class="mg">200MG</span>${cupSvg(INK)}${cupSvg(INK)}</div>`);
+const hdrR = add(`<div class="hdr" style="left:${AX_R-118}px">
+   ${cupSvg(INK)}${cupSvg(INK)}<span class="mg">200MG</span></div>`);
+
+const noon = add(`<div class="noon" style="left:${(AX_L+AX_R)/2-100}px">12 UHR</div>`);
+
+const rowEls = ROWS.map(([time, val, y]) => ({
+  tick_l: add(`<div class="tick" style="left:${AX_L-9}px;top:${y}px"></div>`),
+  tick_r: add(`<div class="tick" style="left:${AX_R-9}px;top:${y}px"></div>`),
+  time:   add(`<div class="tlabel" style="left:${(AX_L+AX_R)/2-100}px;top:${y-13}px">${time}</div>`),
+  val:    add(`<div class="rval"   style="left:${AX_R+34}px;top:${y-13}px">${val}</div>`),
+}));
+
+const leftFinal = add(`<div class="lval" style="left:${AX_L-202}px;width:168px;
+                        top:${ROWS[LAST][2]-13}px;color:${BLUE}">100 MG</div>`);
+const arrowL = add(`<div class="arrow" style="left:${AX_L-202}px;top:${ROWS[LAST][2]-11}px">
+                      ${arrowSvg(1)}</div>`);
+const arrowR = add(`<div class="arrow" style="left:${AX_R+142}px;top:${ROWS[LAST][2]-11}px">
+                      ${arrowSvg(-1)}</div>`);
+
+const perL = add(`<div class="person" style="left:${AX_L-55}px;top:${AX_BOTTOM+30}px">
+                    ${personSvg(BLUE)}<div class="plabel">LANGSAM</div></div>`);
+const perR = add(`<div class="person" style="left:${AX_R-55}px;top:${AX_BOTTOM+30}px">
+                    ${personSvg(PINK)}<div class="plabel">SCHNELL</div></div>`);
+
+const zzz  = add(`<div class="zzz"  style="left:${AX_R+40}px;top:${AX_BOTTOM+22}px">z z</div>`);
+const cupM = add(`<div class="cupmark" style="left:${AX_L-128}px;top:${AX_BOTTOM+18}px">
+                    ${cupSvg(INK)}</div>`);
+const bang = add(`<div class="bang" style="left:${AX_L-88}px;top:${AX_BOTTOM+8}px">!</div>`);
+
+/* ---------- Easing ---------- */
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const outCubic=x=>1-Math.pow(1-x,3);
+const outBack =x=>1+1.15*Math.pow(x-1,3)+0.75*Math.pow(x-1,2);
+const seg=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const lerp=(a,b,p)=>a+(b-a)*p;
+const fade=(el,p,dy=12)=>{el.style.opacity=p;
+  el.style.transform=`translateY(${lerp(dy,0,p)}px)`;};
+
+/* ---------- Timeline ---------- */
+window.DURATION = 10.0;
+
+window.seek = function(t){
+  /* 1 — die beiden Achsen zeichnen sich nach unten */
+  const draw = outCubic(seg(t, 0.15, 1.05));
+  const h = (AX_BOTTOM - AX_TOP) * draw;
+  axL.style.height = h + 'px';
+  axR.style.height = h + 'px';
+
+  /* 2 — Personen als Anker, gleich zu Beginn */
+  fade(perL, outCubic(seg(t, 0.30, 0.85)), 16);
+  fade(perR, outCubic(seg(t, 0.42, 0.97)), 16);
+
+  /* 3 — Kopfzeile: gleiche Dosis auf beiden Seiten */
+  fade(hdrL, outCubic(seg(t, 1.00, 1.50)));
+  fade(hdrR, outCubic(seg(t, 1.12, 1.62)));
+  fade(noon, outCubic(seg(t, 1.30, 1.75)), 8);
+
+  /* 4 — Zeitzeilen laufen gestaffelt nach unten durch */
+  rowEls.forEach((r, i) => {
+    const p = outCubic(seg(t, 1.85 + i*0.20, 2.20 + i*0.20));
+    r.tick_l.style.opacity = p;
+    r.tick_r.style.opacity = p;
+    fade(r.time, p, 10);
+
+    /* 5 — Restwerte der schnellen Seite, jeweils kurz nach der Zeile */
+    const vp = outCubic(seg(t, 3.30 + i*0.28, 3.60 + i*0.28));
+    fade(r.val, vp, 8);
+    /* die letzte Zeile ist die Pointe: 0 MG in Pink statt Grau */
+    if (i === LAST){
+      r.val.style.color = mixHex(GREY, PINK, outCubic(seg(t, 5.05, 5.45)));
+      r.val.style.fontSize = lerp(25, 29, outCubic(seg(t, 5.05, 5.45))) + 'px';
+    }
+  });
+
+  /* 6 — der Kontrast: rechts leer, links noch 100 MG */
+  fade(arrowR,    outCubic(seg(t, 5.25, 5.70)), 0);
+  fade(leftFinal, outCubic(seg(t, 5.95, 6.45)), 0);
+  fade(arrowL,    outCubic(seg(t, 6.15, 6.60)), 0);
+
+  /* 7 — Konsequenz: die schnelle Person schläft, die langsame trinkt noch Koffein */
+  const zp = outCubic(seg(t, 6.70, 7.15));
+  zzz.style.opacity = zp;
+  zzz.style.transform = `translateY(${lerp(10,-6,zp)}px)`;
+
+  const cp = outCubic(seg(t, 7.20, 7.70));
+  cupM.style.opacity = cp;
+  cupM.style.transform = `translateY(${lerp(12,0,cp)}px)`;
+  bang.style.opacity = t > 7.55
+      ? 0.55 + 0.45*Math.abs(Math.sin((t-7.55)*Math.PI*2.2)) : 0;
+
+  /* 8 — die langsame Seite pulsiert am Ende leicht mit */
+  const pulse = t > 6.45 ? 1 + 0.05*Math.abs(Math.sin((t-6.45)*Math.PI*1.6)) : 1;
+  leftFinal.style.transform = `scale(${pulse})`;
+};
+
+function mixHex(a,b,p){
+  const h=s=>[1,3,5].map(i=>parseInt(s.substr(i,2),16));
+  const [r1,g1,b1]=h(a),[r2,g2,b2]=h(b);
+  const c=(x,y)=>Math.round(lerp(x,y,p)).toString(16).padStart(2,'0');
+  return `#${c(r1,r2)}${c(g1,g2)}${c(b1,b2)}`;
+}
+
+window.seek(0);
+document.fonts.ready.then(()=>{ window.FONTS_READY = true; });
+</script>
+</body>
+</html>

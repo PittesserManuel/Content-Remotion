@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family:'M'; src:url('fonts/Inter-500.ttf') format('truetype'); font-weight:500; }
+@font-face { font-family:'M'; src:url('fonts/Inter-600.ttf') format('truetype'); font-weight:600; }
+@font-face { font-family:'M'; src:url('fonts/Inter-700.ttf') format('truetype'); font-weight:700; }
+@font-face { font-family:'M'; src:url('fonts/Inter-800.ttf') format('truetype'); font-weight:800; }
+
+html,body{margin:0;padding:0;width:720px;height:1280px;background:#FFFFFF;overflow:hidden;}
+
+#stage{position:relative;width:720px;height:1280px;}
+#block{
+  position:absolute;left:0;right:0;top:300px;
+  display:flex;flex-direction:column;align-items:center;
+  will-change:transform;
+}
+
+/* ---- heart above the number ---- */
+#heart{height:70px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;}
+#heart svg{overflow:visible;}
+
+/* ---- big counter ---- */
+#num{font-family:'M';font-weight:800;font-size:104px;line-height:1;letter-spacing:-4px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;
+     display:flex;align-items:baseline;transform-origin:50% 60%;}
+#numunit{font-size:38px;font-weight:600;margin-left:8px;opacity:0.5;letter-spacing:-1px;}
+
+#perday{font-family:'M';font-weight:800;font-size:56px;letter-spacing:-1.5px;
+        color:#0B0D12;margin-top:14px;transform-origin:50% 50%;}
+
+/* ---- cup row ---- */
+#cups{display:flex;gap:6px;margin-top:26px;}
+#cups .cup{width:44px;height:52px;}
+
+/* ---- red arrow ---- */
+#arrow{margin-top:22px;height:52px;}
+
+/* ---- captions ---- */
+.caption{font-family:'M';font-weight:600;font-size:29px;letter-spacing:-0.2px;
+         text-align:center;line-height:1.5;color:#9AA1AC;margin-top:8px;}
+.caption b{font-weight:700;}
+#captionZone{position:relative;width:100%;height:200px;margin-top:14px;}
+#captionZone .caption{position:absolute;top:0;left:0;right:0;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="block">
+    <div id="heart"></div>
+    <div id="num"><span id="numval">0</span><span id="numunit">mg</span></div>
+    <div id="perday">PRO TAG</div>
+    <div id="cups"></div>
+    <div id="arrow">
+      <svg width="34" height="52" viewBox="0 0 34 52"><g id="arrowg" fill="#EF4444">
+        <rect x="14" y="14" width="6" height="34"/>
+        <polygon points="17,0 32,18 2,18"/>
+      </g></svg>
+    </div>
+    <div id="captionZone">
+      <div id="safe" class="caption">GILT ALS <b style="color:#0EA5E9">SICHER</b><br>FÜR GESUNDE ERWACHSENE</div>
+      <div id="harder" class="caption">DESTO HÄRTER MUSS<br><span style="color:#0B0D12">DEIN HERZ ARBEITEN</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Deterministic scene: every visual property is a pure function of t. *
+ * No CSS transitions/animations — the renderer seeks frame by frame.  *
+ * ------------------------------------------------------------------ */
+
+const CUPS = 10;
+const C_EMPTY = '#E2E5EA';
+const C_BLUE  = '#38BDF8';
+const C_PINK  = '#F472B6';
+const C_RED   = '#EF4444';
+const C_GREY  = '#9AA1AC';
+
+/* --- cup icon --------------------------------------------------- */
+function cupSvg(){
+  return `<svg class="cup" viewBox="0 0 44 52">
+    <g class="lid"></g>
+    <rect class="lid" x="3" y="4"  width="38" height="9"  rx="2"/>
+    <rect class="lid" x="8" y="0"  width="28" height="5"  rx="2"/>
+    <path class="body" d="M7 16 h30 l-4 32 a6 6 0 0 1 -6 5 h-10 a6 6 0 0 1 -6 -5 z"/>
+    <rect class="sleeve" x="8" y="26" width="28" height="12"/>
+  </svg>`;
+}
+const cupsEl = document.getElementById('cups');
+cupsEl.innerHTML = Array.from({length:CUPS}, cupSvg).join('');
+const cupNodes = [...cupsEl.querySelectorAll('svg')];
+
+function paintCup(i, color, on){
+  const s = cupNodes[i];
+  const outline = on ? color : C_EMPTY;
+  s.querySelectorAll('.lid').forEach(n => n.setAttribute('fill', outline));
+  const body = s.querySelector('.body');
+  body.setAttribute('fill', on ? color : 'none');
+  body.setAttribute('stroke', outline);
+  body.setAttribute('stroke-width', '3');
+  const sl = s.querySelector('.sleeve');
+  sl.setAttribute('fill', on ? '#ffffff' : 'none');
+  sl.setAttribute('opacity', on ? '0.35' : '0');
+}
+
+/* --- heart icon -------------------------------------------------- */
+const heartEl = document.getElementById('heart');
+heartEl.innerHTML = `<svg width="120" height="70" viewBox="0 0 120 70">
+  <g id="strain" stroke="#0B0D12" stroke-width="4" stroke-linecap="round">
+    <line x1="18" y1="30" x2="34" y2="30"/>
+    <line x1="86" y1="30" x2="102" y2="30"/>
+  </g>
+  <g id="heartg"><path id="heartp"
+    d="M60 58 C 34 40 26 30 26 20 A 12 12 0 0 1 60 14 A 12 12 0 0 1 94 20 C 94 30 86 40 60 58 Z"/></g>
+</svg>`;
+
+/* --- easing ------------------------------------------------------ */
+const clamp = (x,a,b) => Math.min(b, Math.max(a,x));
+const outCubic = x => 1 - Math.pow(1-x, 3);
+const outBack  = x => 1 + 1.15*Math.pow(x-1,3) + 0.75*Math.pow(x-1,2);
+/** normalized progress of t inside [a,b] */
+const seg = (t,a,b) => clamp((t-a)/(b-a), 0, 1);
+const lerp = (a,b,p) => a + (b-a)*p;
+
+const el = id => document.getElementById(id);
+
+/* --- the timeline ------------------------------------------------ */
+window.DURATION = 9.5;
+
+window.seek = function(t){
+  /* 1 — "PER DAY" alone, centred */
+  const pIn = seg(t, 0.00, 0.55);
+  el('perday').style.opacity   = outCubic(pIn);
+  el('perday').style.transform = `scale(${lerp(0.86,1,outBack(pIn))})`;
+
+  /* 2 — number pops in, whole block settles upward */
+  const nIn = seg(t, 0.80, 1.35);
+  el('num').style.opacity   = outCubic(nIn);
+  el('num').style.transform = `scale(${lerp(0.70,1,outBack(nIn))})`;
+  el('block').style.transform = `translateY(${lerp(96, 0, outCubic(nIn))}px)`;
+
+  /* 3 — the counter itself: 0 → 400 → 800 → 1000 */
+  let mg = 0, numColor = C_BLUE;
+  if (t < 4.20){
+    mg = Math.round(lerp(0, 400, outCubic(seg(t, 0.80, 1.60))));
+    numColor = C_BLUE;
+  } else if (t < 6.00){
+    const p = outCubic(seg(t, 4.20, 5.10));
+    mg = Math.round(lerp(400, 800, p));
+    numColor = mixHex(C_BLUE, C_GREY, p);
+  } else {
+    const p = outCubic(seg(t, 6.00, 6.75));
+    mg = Math.round(lerp(800, 1000, p));
+    numColor = mixHex(C_GREY, C_RED, p);
+  }
+  el('numval').textContent = mg;
+  el('num').style.color = numColor;
+
+  /* 4 — cup row: staggered appear, then staggered fill */
+  for (let i = 0; i < CUPS; i++){
+    const born = seg(t, 1.40 + i*0.045, 1.62 + i*0.045);
+    cupNodes[i].style.opacity = outCubic(born);
+    cupNodes[i].style.transform = `translateY(${lerp(10,0,outCubic(born))}px)`;
+
+    let color = C_EMPTY, on = false;
+    if (i < 4)       { on = t > 2.05 + i*0.09; color = C_BLUE; }
+    else if (i < 8)  { on = t > 4.35 + (i-4)*0.11; color = C_PINK; }
+    else             { on = t > 6.10 + (i-8)*0.13; color = C_RED; }
+    paintCup(i, color, on);
+  }
+
+  /* 5 — red arrow + "considered safe" (in at 2.6, out at 4.2) */
+  const sIn  = seg(t, 2.60, 3.15);
+  const sOut = seg(t, 4.20, 4.55);
+  const sVis = outCubic(sIn) * (1 - outCubic(sOut));
+  el('arrow').style.opacity   = sVis;
+  el('arrow').style.transform = `translateY(${lerp(18,0,outCubic(sIn))}px)`;
+  el('safe').style.opacity    = sVis;
+  el('safe').style.transform  = `translateY(${lerp(16,0,outCubic(sIn))}px)`;
+
+  /* 6 — heart appears with the 800 step, strains at 1000, beats after */
+  const hIn = seg(t, 4.30, 4.85);
+  heartEl.style.opacity = outCubic(hIn);
+  const beat = t > 6.30 ? 1 + 0.085*Math.abs(Math.sin((t-6.30)*Math.PI*1.9)) : 1;
+  el('heartg').setAttribute('transform',
+    `translate(60 36) scale(${lerp(0.72,1,outBack(hIn))*beat}) translate(-60 -36)`);
+  el('heartp').setAttribute('fill', t > 6.30 ? mixHex('#0B0D12', C_RED, seg(t,6.30,6.90)) : '#0B0D12');
+  el('strain').setAttribute('opacity', outCubic(seg(t, 6.35, 6.75)));
+
+  /* 7 — closing caption */
+  const cIn = seg(t, 6.60, 7.20);
+  el('harder').style.opacity   = outCubic(cIn);
+  el('harder').style.transform = `translateY(${lerp(16,0,outCubic(cIn))}px)`;
+};
+
+function mixHex(a,b,p){
+  const h = s => [1,3,5].map(i => parseInt(s.substr(i,2),16));
+  const [r1,g1,b1] = h(a), [r2,g2,b2] = h(b);
+  const c = (x,y) => Math.round(lerp(x,y,p)).toString(16).padStart(2,'0');
+  return `#${c(r1,r2)}${c(g1,g2)}${c(b1,b2)}`;
+}
+
+window.seek(0);
+document.fonts.ready.then(() => { window.FONTS_READY = true; });
+</script>
+</body>
+</html>
