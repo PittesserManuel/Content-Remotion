@@ -16,7 +16,8 @@ html,body{margin:0;padding:0;width:720px;height:1280px;background:transparent;ov
    Alle Werte in CSS-Pixeln, Bild = 1.5x. */
 .card{position:absolute;left:40px;top:795px;width:573px;height:245px;
   box-sizing:border-box;border-radius:18px;
-  background:rgba(11,13,18,0.86);border:1px solid rgba(255,255,255,0.12);}
+  /* voll deckend — sonst schlaegt beim Greenscreen-Export das Gruen durch */
+  background:#0B0D12;border:1px solid rgba(255,255,255,0.12);}
 
 .chead{position:absolute;left:20px;top:14px;font-size:19px;letter-spacing:1.5px;color:#9AA1AC;}
 

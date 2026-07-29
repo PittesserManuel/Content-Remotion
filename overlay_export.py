@@ -7,6 +7,21 @@ kann man auch nicht abnehmen.
   out/<name>.mp4   Szene ueber das Originalmaterial gerechnet. Sichtbar,
                    ueberall abspielbar, direkt in den Schnitt zu legen.
 
+Mit --chroma kommt die Greenscreen-Fassung dazu:
+
+  out/<name>_key.mp4      Die Animation auf reinem Magenta (#FF00FF), H.264.
+                          Spielt auf jedem Geraet und in jedem Player — im
+                          Gegensatz zu Alpha-Formaten, die Windows ohne
+                          Zusatzcodec gar nicht erst oeffnet. In CapCut mit
+                          "Hintergrund entfernen -> Chroma-Key" die Farbe
+                          herausnehmen. Die Karten sind dafuer voll deckend,
+                          sonst wuerde die Farbe durchschlagen.
+
+                          Magenta statt Gruen mit Absicht: die Haken in ov4
+                          sind #AFFF00 und werden bei hoeherer Toleranz
+                          mitgestanzt. Magenta kommt im Design nirgends vor,
+                          damit ist der Toleranzregler unkritisch.
+
 Mit --alpha kommen die freigestellten Dateien dazu:
 
   out/<name>.mov          QuickTime Animation (qtrle), Alphakanal, verlustfrei.
@@ -53,6 +68,7 @@ arg = lambda k, d=None: next(
 SOURCE = arg("source")
 ONLY = arg("only")
 ALPHA = "--alpha" in sys.argv      # freigestellte Zusatzdatei erzeugen
+CHROMA = "--chroma" in sys.argv    # Greenscreen-Fassung erzeugen
 OUT = HERE / "out"
 OUT.mkdir(exist_ok=True)
 
@@ -104,6 +120,18 @@ for key, scene, start, name in OVERLAYS:
              "-map", "[o]", "-r", str(FPS), "-c:v", "libx264", "-crf", "20",
              "-preset", "veryfast", "-pix_fmt", "yuv420p", str(chk)])
         print(f"  {chk.name}  {chk.stat().st_size/1e6:.1f} MB  (Kontrolle)")
+
+    # 1c) Greenscreen — ueberall abspielbar, in CapCut per Chroma-Key nutzbar
+    if CHROMA:
+        grn = OUT / f"{name}_key.mp4"
+        run([FF, "-hide_banner", "-loglevel", "error", "-y",
+             "-f", "lavfi", "-i", f"color=c=0xFF00FF:s=1080x1920:d={dur:.3f}:r={FPS}",
+             "-framerate", str(FPS), "-i", str(HERE / "frames" / "f_%04d.png"),
+             "-filter_complex", "[0:v][1:v]overlay=0:0:format=auto,format=yuv420p[o]",
+             "-map", "[o]", "-r", str(FPS), "-c:v", "libx264", "-crf", "16",
+             "-preset", "slow", "-pix_fmt", "yuv420p",
+             "-movflags", "+faststart", str(grn)])
+        print(f"  {grn.name}  {grn.stat().st_size/1e6:.1f} MB  (Chroma-Key, Magenta)")
 
     # 2) die Standardausgabe: ueber das Originalmaterial gerechnet
     if SOURCE:
